@@ -312,12 +312,21 @@ def pass_compute_thresholds(graph: Graph) -> None:
     for m in exec_list:
         # find a a backward path between the quantizer and the convolution ie. a path represented by a list [Q, ..., C]
         p = [m]
+        skippable = True
         while p[-1].op_type != 'Conv':
             non_variable_input = [inode for inode in p[-1].input_nodes
                                   if (not cast(Operator, inode).is_variable and inode.is_monotonic)
                                   or inode.op_type == 'Conv']
             if len(non_variable_input) != 1:
                 break
+
+            for output_op in non_variable_input[-1].output_op_list:
+                if not output_op.is_monotonic and len(non_variable_input[-1].output_op_list) > 1:
+                    skippable = False
+                    break
+            if not skippable:
+                break
+
             p.append(non_variable_input[-1])
 
         if p[-1].op_type != 'Conv':
