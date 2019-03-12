@@ -31,6 +31,7 @@ class Base(BaseNetwork):
             self,
             *args,
             label_colors=None,
+            weight_decay_rate=None,
             **kwargs
     ):
         super().__init__(
@@ -41,6 +42,7 @@ class Base(BaseNetwork):
             self.label_colors = get_color_map(self.num_classes)
         else:
             self.label_colors = label_colors
+        self.weight_decay_rate = weight_decay_rate
 
     def placeholderes(self):
         shape = (self.batch_size, self.image_size[0], self.image_size[1], 3) \

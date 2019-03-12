@@ -14,11 +14,13 @@
 # limitations under the License.
 # =============================================================================
 import os
+import sys
 import math
-
 import click
 import tensorflow as tf
 from tensorflow.core.util.event_pb2 import SessionLog
+
+from tqdm import tqdm
 
 from lmnet.utils import executor, module_loader, config as config_util
 from lmnet import environment
@@ -32,7 +34,7 @@ def _save_checkpoint(saver, sess, global_step, step):
         os.path.join(environment.CHECKPOINTS_DIR, checkpoint_file),
         global_step=global_step,
     )
-    print("Save ckpt. step: {}.".format(step + 1))
+    # print("Save ckpt. step: {}.".format(step + 1))
 
 
 def setup_dataset(config, subset, rank):
@@ -161,11 +163,13 @@ def start_training(config):
         #         per_process_gpu_memory_fraction=0.1
         #     )
         # )
-        session_config = tf.ConfigProto()  # tf.ConfigProto(log_device_placement=True)
+        session_config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True,))
+        # session_config = tf.ConfigProto()  # tf.ConfigProto(log_device_placement=True)
     # TODO(wakisaka): XLA JIT
     # session_config.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
 
     sess = tf.Session(graph=graph, config=session_config)
+    tf.keras.backend.set_session(sess)
     sess.run([init_op, reset_metrics_op])
 
     if rank == 0:
@@ -213,8 +217,9 @@ def start_training(config):
         max_steps = config.MAX_STEPS
     print("max_steps: {}".format(max_steps))
 
-    for step in range(last_step, max_steps):
-        print("step", step)
+    # bar_format = '{desc}[{elapsed}<{remaining},{rate_fmt}]'
+    for step in tqdm(range(last_step, max_steps)):
+        # print("step", step)
 
         if config.IS_DISTRIBUTION:
             # scatter dataset
@@ -322,10 +327,10 @@ def start_training(config):
             # init metrics values
             sess.run(reset_metrics_op)
             test_step_size = int(math.ceil(validation_dataset.num_per_epoch / config.BATCH_SIZE))
-            print("test_step_size", test_step_size)
+            # print("test_step_size", test_step_size)
 
             for test_step in range(test_step_size):
-                print("test_step", test_step)
+                # print("test_step", test_step)
 
                 images, labels = validation_dataset.feed()
                 feed_dict = {

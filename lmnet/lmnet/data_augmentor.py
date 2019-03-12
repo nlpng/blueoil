@@ -392,7 +392,7 @@ def iou(boxes, box):
     Returns:
         iou: shape is [num_boxes]
     """
-    assert boxes.size != 0, "Cannot calculate if ground truth boxes is zero"
+    assert boxes.size != 0, "Cannot clculate if ground truth boxes is zero"
 
     # format boxes (left, top, right, bottom)
     boxes = np.stack([
@@ -427,19 +427,6 @@ def iou(boxes, box):
     union = area + areas - intersection
 
     return intersection / (union + epsilon)
-
-
-# TODO(tokunaga): Move to somewhere, It is generic function for object detection.
-def _fill_dummy_boxes(gt_boxes, num_max_boxes):
-    dummy_gt_box = [0, 0, 0, 0, -1]
-    if len(gt_boxes) == 0:
-        gt_boxes = np.array(dummy_gt_box * num_max_boxes)
-        return gt_boxes.reshape([num_max_boxes, 5])
-    elif len(gt_boxes) < num_max_boxes:
-        diff = num_max_boxes - len(gt_boxes)
-        gt_boxes = np.append(gt_boxes, [dummy_gt_box] * diff, axis=0)
-        return gt_boxes
-    return gt_boxes
 
 
 def _crop_boxes(boxes, crop_rect):
@@ -742,8 +729,8 @@ class SSDRandomCrop(data_processor.Processor):
         # Crop rectangle minimum ratio corresponding to original image.
         self.min_crop_ratio = min_crop_ratio
 
-    def __call__(self, image, gt_boxes, **kwargs):
-        """SSDRandomCrop
+    def __call__(self, image, gt_boxes=None, **kwargs):
+        """Crop
 
         Args:
             image (np.ndarray): a image. shape is [height, width, channel]
@@ -753,7 +740,6 @@ class SSDRandomCrop(data_processor.Processor):
         """
         boxes = gt_boxes
         height, width, _ = image.shape
-        num_max_boxes = len(gt_boxes)
 
         while True:
             # randomly choose a mode
@@ -821,7 +807,6 @@ class SSDRandomCrop(data_processor.Processor):
                 # take only matching gt boxes
                 masked_boxes = boxes[mask, :]
                 current_boxes = _crop_boxes(masked_boxes, crop_rect)
-                current_boxes = _fill_dummy_boxes(current_boxes, num_max_boxes)
 
                 return dict({'image': current_image, 'gt_boxes': current_boxes}, **kwargs)
 
@@ -912,3 +897,178 @@ def affine_scale(img, scale, fill_color="white"):
     new_image.paste(scaled, (int(outer_width / 2), int(outer_height / 2)))
 
     return np.array(new_image)
+
+
+class RandomScale(data_processor.Processor):
+    def __init__(self, scales):
+        self.scales = scales
+
+    def __call__(self, image, mask, **kwargs):
+        if (image.shape[0] != mask.shape[0]) or (image.shape[1] != mask.shape[1]):
+            raise Exception('Image and label must have the same dimensions!')
+
+        # Random scale
+        image = Image.fromarray(np.uint8(image))
+        mask = Image.fromarray(np.uint8(mask))
+
+        scale = random.choice(self.scales)
+        sw = image.size[0] * scale
+        sh = image.size[1] * scale
+
+        image = image.resize((int(sw), int(sh)), Image.BILINEAR)
+        mask = mask.resize((int(sw), int(sh)), Image.NEAREST)
+
+        image = np.array(image)
+        mask = np.array(mask)
+
+        return dict({'image': image, 'mask': mask}, **kwargs)
+
+
+class RandomCrop(data_processor.Processor):
+    def __init__(self, crop_size):
+        print(crop_size)
+        self.crop_height = crop_size[0]
+        self.crop_width = crop_size[1]
+
+    def __call__(self, image, mask=None, **kwargs):
+        if (image.shape[0] != mask.shape[0]) or (image.shape[1] != mask.shape[1]):
+            raise Exception('Image and label must have the same dimensions!')
+
+        if (self.crop_width <= image.shape[1]) and (self.crop_height <= image.shape[0]):
+            x = random.randint(0, image.shape[1] - self.crop_width)
+            y = random.randint(0, image.shape[0] - self.crop_height)
+
+            # print(image.shape)
+
+            if len(mask.shape) == 3:
+                return dict({'image': image[y:y + self.crop_height, x:x + self.crop_width, :],
+                             'mask': mask[y:y + self.crop_height, x:x + self.crop_width, :]}, **kwargs)
+            else:
+                return dict({'image': image[y:y + self.crop_height, x:x + self.crop_width, :],
+                             'mask': mask[y:y + self.crop_height, x:x + self.crop_width]}, **kwargs)
+
+        else:
+            raise Exception('Crop shape (%d, %d) exceeds image dimensions (%d, %d)!' % (
+                crop_height, crop_width, image.shape[0], image.shape[1]))
+
+
+class RandomResize(data_processor.Processor):
+    """RandomResize image.
+    Args:
+        min_scale (int): min_scale
+        max_scale (int): max_scale
+    """
+
+    def __init__(self, min_scale, max_scale):
+
+        self.min_scale = min_scale
+        self.max_scale = max_scale
+
+    def __call__(self, image, mask=None, **kwargs):
+        original_height = image.shape[0]
+        original_width = image.shape[1]
+
+        height_scale = random.uniform(self.min_scale, self.max_scale)
+        width_scale = random.uniform(self.min_scale, self.max_scale)
+
+        resize_height = int(original_height * height_scale)
+        resize_width = int(original_width * width_scale)
+        image = pre_processor.resize(image, size=(resize_height, resize_width))
+        if mask is not None:
+            mask = pre_processor.resize(mask, size=(resize_height, resize_width))
+
+        return dict({'image': image, 'mask': mask}, **kwargs)
+
+
+class CropOrPad(data_processor.Processor):
+    """Crop image.
+    Args:
+        size (int | list | tuple): Crop to this size.
+        fill (int | float):
+    """
+
+    def __init__(self, size, fill=128, fill_label=0):
+
+        if type(size) in [int, float]:
+            height = size
+            width = size
+
+        elif len(size) == 2:
+            height, width = size
+
+        else:
+            raise Exception("Expected float or int, tuple/list with 2 entries. Got %s." % (type(size)))
+
+        assert height > 0
+        assert width > 0
+
+        self.height = height
+        self.width = width
+        self.fill = fill
+        self.fill_label = fill_label
+
+    def __call__(self, image, mask=None, **kwargs):
+        original_height = image.shape[0]
+        original_width = image.shape[1]
+
+        top = bottom = left = right = 0
+        if original_height < self.height:
+            top = int((self.height - original_height) / 2)
+            bottom = self.height - original_height - top
+        if original_width < self.width:
+            left = int((self.width - original_width) / 2)
+            right = self.width - original_width - right
+
+        pad_image = np.pad(image, ((top, bottom), (left, right), (0, 0)), 'constant', constant_values=self.fill)
+        if mask is not None:
+            pad_mask = np.pad(mask, ((top, bottom), (left, right)), 'constant', constant_values=self.fill_label)
+
+        # crop
+        top = left = 0
+        if original_height > self.height:
+            top = randint(0, original_height - self.height)
+        if original_width > self.width:
+            left = randint(0, original_width - self.width)
+
+        image = pad_image[top:top + self.height, left:left + self.width, :]
+        if mask is not None:
+            mask = pad_mask[top:top + self.height, left:left + self.width]
+
+        return dict({'image': image, 'mask': mask}, **kwargs)
+
+
+class BiSeNetPrep(data_processor.Processor):
+    def __init__(self, scales, crop_size):
+        self.scales = scales
+        self.crop_h = crop_size[0]
+        self.crop_w = crop_size[1]
+
+    def __call__(self, image, mask, **kwargs):
+        if (image.shape[0] != mask.shape[0]) or (image.shape[1] != mask.shape[1]):
+            raise Exception('Image and label must have the same dimensions!')
+
+        # Random scale
+        image = Image.fromarray(np.uint8(image))
+        mask = Image.fromarray(np.uint8(mask))
+
+        scale = random.choice(self.scales)
+        sw = image.size[0] * scale
+        sh = image.size[1] * scale
+
+        image = image.resize((int(sw), int(sh)), Image.BILINEAR)
+        mask = mask.resize((int(sw), int(sh)), Image.NEAREST)
+
+        image = np.array(image)
+        mask = np.array(mask)
+
+        origin_h, origin_w = image.shape[:2]
+
+        crop_pos_h, crop_pos_w = 0, 0
+        if origin_h > self.crop_h:
+            crop_pos_h = random.randint(0, origin_h - self.crop_h + 1)
+        if origin_w > self.crop_w:
+            crop_pos_w = random.randint(0, origin_w - self.crop_w + 1)
+
+        print(mask)
+
+        return dict({'image': image, 'mask': mask}, **kwargs)

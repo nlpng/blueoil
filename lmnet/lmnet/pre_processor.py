@@ -298,6 +298,15 @@ class DivideBy255(Processor):
         return dict({'image': image}, **kwargs)
 
 
+class MeanSubstraction(Processor):
+    def __init__(self, mean):
+        self.mean = mean
+
+    def __call__(self, image, **kwargs):
+        image = image - self.mean
+        return dict({'image': image}, **kwargs)
+
+
 # TODO(wakisaka): test.
 class LetterBoxes(Processor):
     """Darknet's letter boxes"""
