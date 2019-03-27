@@ -103,9 +103,9 @@ def _export(config, restore_path, image_path):
 
         images_placeholder, _ = model.placeholderes()
         output = model.inference(images_placeholder, is_training)
-        model.summary(output)
+        # model.summary(output)
 
-        summary_op = tf.summary.merge_all()
+        # summary_op = tf.summary.merge_all()
         init_op = tf.global_variables_initializer()
 
         saver = tf.train.Saver(max_to_keep=50)
@@ -147,8 +147,8 @@ def _export(config, restore_path, image_path):
 
         _save_npy(image_path, npy_output_dir, image, raw_image, all_outputs, config.IMAGE_SIZE)
 
-        summary = sess.run(summary_op, feed_dict=feed_dict)
-        export_writer.add_summary(summary)
+        # summary = sess.run(summary_op, feed_dict=feed_dict)
+        # export_writer.add_summary(summary, i)
 
     yaml_names = config_util.save_yaml(main_output_dir, config)
     pb_name = executor.save_pb_file(sess, main_output_dir)

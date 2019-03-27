@@ -26,6 +26,8 @@ from lmnet.utils import executor, module_loader, config as config_util
 from lmnet import environment
 from lmnet.datasets.dataset_iterator import DatasetIterator
 
+from tensorpack.tfutils import varmanip
+
 
 def _save_checkpoint(saver, sess, global_step, step):
     checkpoint_file = "save.ckpt"
@@ -96,6 +98,13 @@ def start_training(config):
                 is_debug=config.IS_DEBUG,
                 **network_kwargs,
             )
+        elif ModelClass.__module__.startswith("lmnet.networks.segmentation"):
+            model = ModelClass(
+                classes=train_dataset.classes,
+                label_colors=train_dataset.label_colors,
+                is_debug=config.IS_DEBUG,
+                **network_kwargs,
+            )
         else:
             model = ModelClass(
                 classes=train_dataset.classes,
@@ -137,15 +146,28 @@ def start_training(config):
         else:
             saver = tf.train.Saver(max_to_keep=None)
 
-        if config.IS_PRETRAIN:
-            all_vars = tf.global_variables()
-            pretrain_var_list = [
-                var for var in all_vars if var.name.startswith(tuple(config.PRETRAIN_VARS))
-            ]
-            print("pretrain_vars", [
-                var.name for var in pretrain_var_list
-            ])
-            pretrain_saver = tf.train.Saver(pretrain_var_list, name="pretrain_saver")
+        if config.USE_PRETRAIN:
+
+            saved_vars = varmanip.load_chkpt_vars(config.PRETRAIN_FILE)
+            assert isinstance(saved_vars, dict), type(saved_vars)
+            ignore = ["global_step"]
+
+            def get_op_tensor_name(name):
+                if len(name) >= 3 and name[-2] == ':':
+                    return name[:-2], name
+                else:
+                    return name, name + ':0'
+
+            pretrain_vars = {get_op_tensor_name(n)[1]: v for n, v in saved_vars.items() if n not in ignore}
+            graph_vars = tf.global_variables()
+
+            graph_var_names = set([k.name for k in graph_vars])
+            pretrain_var_names = set([k for k in pretrain_vars.keys()])
+
+            intersect = graph_var_names & pretrain_var_names
+            print("{} variables to restore from saves: {}".format(len(intersect), ', '.join(map(str, intersect))))
+
+            pretrain_loader = tf.train.Saver([v for v in graph_vars if v.name in intersect], name="pretrain_loader")
 
     if config.IS_DISTRIBUTION:
         # For distributed training
@@ -178,9 +200,9 @@ def start_training(config):
             train_val_saving_writer = tf.summary.FileWriter(environment.TENSORBOARD_DIR + "/train_validation_saving")
         val_writer = tf.summary.FileWriter(environment.TENSORBOARD_DIR + "/validation")
 
-        if config.IS_PRETRAIN:
+        if config.USE_PRETRAIN:
             print("------- Load pretrain data ----------")
-            pretrain_saver.restore(sess, os.path.join(config.PRETRAIN_DIR, config.PRETRAIN_FILE))
+            pretrain_loader.restore(sess, config.PRETRAIN_FILE)
             sess.run(tf.assign(global_step, 0))
 
         last_step = 0
