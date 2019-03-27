@@ -55,17 +55,17 @@ DATA_FORMAT = "NHWC"
 TASK = Tasks.SEMANTIC_SEGMENTATION
 CLASSES = DATASET_CLASS.classes
 
-MAX_STEPS = 100000
+MAX_STEPS = 150000
 SAVE_STEPS = 10000
-TEST_STEPS = 1000
-SUMMARISE_STEPS = 1000
+TEST_STEPS = 2000
+SUMMARISE_STEPS = 2000
 
 # distributed training
 IS_DISTRIBUTION = False
 
 # pretrain
 USE_PRETRAIN = True
-PRETRAIN_FILE = "/storage/neil/saved/train_log/imagenet-resnet-d18-batch256/model-500400"
+PRETRAIN_FILE = "/storage/neil/saved/train_log/imagenet-qresnet-w64-batch256-nomaxpool-reduced1stlayer3x3/model-525420"
 
 PRE_PROCESSOR = Sequence([
     Resize(size=IMAGE_SIZE),
