@@ -71,14 +71,40 @@ PRE_PROCESSOR = Sequence([
 ])
 POST_PROCESSOR = None
 
+step_per_epoch = int(50000 / BATCH_SIZE)
+
+
+def one_cycle_policy(global_step,
+                     max_lr,
+                     end_percentage=0.1,
+                     scale_percentage=None,
+                     maximum_momentum=0.95,
+                     minimum_momentum=0.85):
+    initial_lr = max_lr
+    num_iterations = MAX_STEPS
+    mid_cycle_id = int(num_iterations * (1. - end_percentage) / float(2))
+    scale = float(scale_percentage) if scale_percentage is not None else float(end_percentage)
+    if global_step > 2 * mid_cycle_id:
+        current_percentage = (global_step - 2 * mid_cycle_id)
+        current_percentage /= float((num_iterations - 2 * mid_cycle_id))
+        new_lr = initial_lr * (1. + (current_percentage * (1. - 100.) / 100.)) * scale
+    elif global_step > mid_cycle_id:
+        current_percentage = 1. - (global_step - mid_cycle_id) / mid_cycle_id
+        new_lr = initial_lr * (1. + current_percentage * (scale * 100 - 1.)) * scale
+    else:
+        current_percentage = global_step / mid_cycle_id
+        new_lr = initial_lr * (1. + current_percentage * (scale * 100 - 1.)) * scale
+    return new_lr
+
+
 NETWORK = EasyDict()
 NETWORK.OPTIMIZER_CLASS = tf.train.MomentumOptimizer
 NETWORK.OPTIMIZER_KWARGS = {"momentum": 0.9}
-NETWORK.LEARNING_RATE_FUNC = tf.train.piecewise_constant
-step_per_epoch = int(50000 / BATCH_SIZE)
+NETWORK.LEARNING_RATE_FUNC = one_cycle_policy
 NETWORK.LEARNING_RATE_KWARGS = {
-    "values": [0.01, 0.001, 0.0001, 0.00001],
-    "boundaries": [step_per_epoch * 50, step_per_epoch * 100, step_per_epoch * 150],
+    'max_lr': 0.01,
+    'end_percentage': 0.1,
+    'scale_percentage': None,
 }
 NETWORK.IMAGE_SIZE = IMAGE_SIZE
 NETWORK.BATCH_SIZE = BATCH_SIZE
