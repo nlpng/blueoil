@@ -27,7 +27,7 @@ def rename_get_variable(mapping):
 
 
 def bnrelu(x, name=None):
-    x = tf.layers.batch_normalization(x, name='bn')
+    x = tf.layers.batch_normalization(x, name='bn', training=False)
     x = tf.nn.relu(x, name=name)
     return x
 
@@ -39,7 +39,7 @@ def resnet_shortcut(x, n_out, stride):
             x = tf.layers.conv2d(x, n_out, 1, strides=stride, padding='SAME', use_bias=False,
                                  kernel_initializer=tf.variance_scaling_initializer(scale=2.0, mode='fan_out'),
                                  name=tf.get_variable_scope())
-            x = tf.layers.batch_normalization(x, name='bn')
+            x = tf.layers.batch_normalization(x, name='bn', training=False)
         return x
     else:
         return x
@@ -54,7 +54,7 @@ def resnet_basicblock(x, ch_out, stride):
         x = tf.layers.conv2d(x, ch_out, 3, padding='SAME', use_bias=False,
                              kernel_initializer=tf.variance_scaling_initializer(scale=2.0, mode='fan_out'),
                              name=tf.get_variable_scope())
-        x = tf.layers.batch_normalization(x, gamma_initializer=tf.zeros_initializer(), name='bn')
+        x = tf.layers.batch_normalization(x, gamma_initializer=tf.zeros_initializer(), name='bn', training=False)
     out = x + resnet_shortcut(shortcut, ch_out, stride)
     return tf.nn.relu(out)
 
