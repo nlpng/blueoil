@@ -40,17 +40,17 @@ NETWORK_CLASS = LmnetV1Quantize
 DATASET_CLASS = Cifar10
 
 IMAGE_SIZE = [32, 32]
-BATCH_SIZE = 100
+BATCH_SIZE = 256
 DATA_FORMAT = "NHWC"
 TASK = Tasks.CLASSIFICATION
 CLASSES = DATASET_CLASS.classes
 
-MAX_STEPS = 100000
+MAX_STEPS = 20000
 SAVE_STEPS = 1000
 TEST_STEPS = 1000
 SUMMARISE_STEPS = 100
 # pretrain
-IS_PRETRAIN = False
+USE_PRETRAIN = False
 PRETRAIN_VARS = []
 PRETRAIN_DIR = ""
 PRETRAIN_FILE = ""
@@ -71,45 +71,42 @@ PRE_PROCESSOR = Sequence([
 ])
 POST_PROCESSOR = None
 
+
 step_per_epoch = int(50000 / BATCH_SIZE)
 
-
-def one_cycle_policy(global_step,
-                     max_lr,
-                     end_percentage=0.1,
-                     scale_percentage=None,
-                     maximum_momentum=0.95,
-                     minimum_momentum=0.85):
-    initial_lr = max_lr
-    num_iterations = MAX_STEPS
-    mid_cycle_id = int(num_iterations * (1. - end_percentage) / float(2))
-    scale = float(scale_percentage) if scale_percentage is not None else float(end_percentage)
-    if global_step > 2 * mid_cycle_id:
-        current_percentage = (global_step - 2 * mid_cycle_id)
-        current_percentage /= float((num_iterations - 2 * mid_cycle_id))
-        new_lr = initial_lr * (1. + (current_percentage * (1. - 100.) / 100.)) * scale
-    elif global_step > mid_cycle_id:
-        current_percentage = 1. - (global_step - mid_cycle_id) / mid_cycle_id
-        new_lr = initial_lr * (1. + current_percentage * (scale * 100 - 1.)) * scale
-    else:
-        current_percentage = global_step / mid_cycle_id
-        new_lr = initial_lr * (1. + current_percentage * (scale * 100 - 1.)) * scale
-    return new_lr
+# lr_values = []
+# lr_boundaries = []
+# initial_lr = 0.01
+# end_percentage = 0.1
+# scale_percentage = None
+# num_iterations = MAX_STEPS
+# mid_cycle_id = int(num_iterations * (1. - end_percentage) / float(2))
+# scale = float(scale_percentage) if scale_percentage is not None else float(end_percentage)
+# for step in range(MAX_STEPS):
+#     if step > 2 * mid_cycle_id:
+#         current_percentage = (step - 2 * mid_cycle_id)
+#         current_percentage /= float((num_iterations - 2 * mid_cycle_id))
+#         new_lr = initial_lr * (1. + (current_percentage * (1. - 100.) / 100.)) * scale
+#     elif step > mid_cycle_id:
+#         current_percentage = 1. - (step - mid_cycle_id) / mid_cycle_id
+#         new_lr = initial_lr * (1. + current_percentage * (scale * 100 - 1.)) * scale
+#     else:
+#         current_percentage = step / mid_cycle_id
+#         new_lr = initial_lr * (1. + current_percentage * (scale * 100 - 1.)) * scale
+#     lr_values.append(new_lr)
+#     if step != 0:
+#         lr_boundaries.append(step)
 
 
 NETWORK = EasyDict()
 NETWORK.OPTIMIZER_CLASS = tf.train.MomentumOptimizer
 NETWORK.OPTIMIZER_KWARGS = {"momentum": 0.9}
-NETWORK.LEARNING_RATE_FUNC = one_cycle_policy
-NETWORK.LEARNING_RATE_KWARGS = {
-    'max_lr': 0.01,
-    'end_percentage': 0.1,
-    'scale_percentage': None,
-}
+NETWORK.LEARNING_RATE_FUNC = 'one_cycle_policy'
+NETWORK.LEARNING_RATE_KWARGS = {}
 NETWORK.IMAGE_SIZE = IMAGE_SIZE
 NETWORK.BATCH_SIZE = BATCH_SIZE
 NETWORK.DATA_FORMAT = DATA_FORMAT
-NETWORK.WEIGHT_DECAY_RATE = 0.0005
+NETWORK.WEIGHT_DECAY_RATE = 0.0001
 NETWORK.ACTIVATION_QUANTIZER = linear_mid_tread_half_quantizer
 NETWORK.ACTIVATION_QUANTIZER_KWARGS = {
     'bit': 2,
@@ -128,4 +125,4 @@ DATASET.AUGMENTOR = Sequence([
     Crop(size=IMAGE_SIZE),
     FlipLeftRight(),
 ])
-DATASET.TRAIN_VALIDATION_SAVING_SIZE = 5000
+# DATASET.TRAIN_VALIDATION_SAVING_SIZE = 5000

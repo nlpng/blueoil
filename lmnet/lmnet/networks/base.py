@@ -137,6 +137,64 @@ class BaseNetwork(object):
                     x=global_step,
                     **self.learning_rate_kwargs
                 )
+            elif self.learning_rate_func is 'one_cycle_policy':
+
+                init_lr = tf.constant(0.8, dtype=tf.float64)
+                end_percentage = tf.constant(0.1, dtype=tf.float64)
+                num_iterations = tf.constant(20000, dtype=tf.float64)
+                mid_cycle_id = tf.floor(num_iterations * (1. - end_percentage) / 2.)
+                max_momentum = tf.constant(0.95, dtype=tf.float64)
+                min_momentum = tf.constant(0.85, dtype=tf.float64)
+                scale = end_percentage
+                global_step = tf.cast(global_step, tf.float64)
+
+                def lr1():
+                    current_percentage = 1. - (global_step - mid_cycle_id) / mid_cycle_id
+                    return init_lr * (1. + current_percentage * (scale * 100 - 1.)) * scale
+
+                def lr2():
+                    current_percentage = global_step / mid_cycle_id
+                    return init_lr * (1. + current_percentage * (scale * 100 - 1.)) * scale
+
+                def lr3():
+                    current_percentage = (global_step - 2 * mid_cycle_id)
+                    current_percentage = current_percentage / (num_iterations - 2 * mid_cycle_id)
+                    return init_lr * (1. + (current_percentage * (1. - 100.) / 100.)) * scale
+
+                # learning_rate = tf.cond(tf.greater(global_step, mid_cycle_id), lr1, lr2)
+                learning_rate = tf.case({tf.greater(global_step, 2 * mid_cycle_id): lr3,
+                                         tf.logical_and(tf.greater(global_step, mid_cycle_id),
+                                                        tf.less_equal(global_step, 2 * mid_cycle_id)): lr1},
+                                        default=lr2, exclusive=True)
+
+                def mom1():
+                    return max_momentum
+
+                def mom2():
+                    current_percentage = 1. - ((global_step - mid_cycle_id) / mid_cycle_id)
+                    return max_momentum - current_percentage * (max_momentum - min_momentum)
+
+                def mom3():
+                    current_percentage = global_step / mid_cycle_id
+                    return max_momentum - current_percentage * (max_momentum - min_momentum)
+
+                momentum = tf.case({tf.greater(global_step, 2 * mid_cycle_id): mom1,
+                                    tf.logical_and(tf.greater(global_step, mid_cycle_id),
+                                                   tf.less_equal(global_step, 2 * mid_cycle_id)): mom2},
+                                   default=mom3, exclusive=True)
+
+                self.optimizer_kwargs["momentum"] = momentum
+
+                # if global_step > 2 * mid_cycle_id:
+                #     current_percentage = (global_step - 2 * mid_cycle_id)
+                #     current_percentage /= float((num_iterations - 2 * mid_cycle_id))
+                #     learning_rate = init_lr * (1. + (current_percentage * (1. - 100.) / 100.)) * scale
+                # elif global_step > mid_cycle_id:
+                #     current_percentage = 1. - (global_step - mid_cycle_id) / mid_cycle_id
+                #     learning_rate = init_lr * (1. + current_percentage * (scale * 100 - 1.)) * scale
+                # else:
+                #     current_percentage = global_step / mid_cycle_id
+                #     learning_rate = init_lr * (1. + current_percentage * (scale * 100 - 1.)) * scale
             else:
                 learning_rate = self.learning_rate_func(
                     global_step=global_step,
@@ -144,6 +202,7 @@ class BaseNetwork(object):
                 )
 
         tf.summary.scalar("learning_rate", learning_rate)
+        tf.summary.scalar("momentum", self.optimizer_kwargs["momentum"])
         self.optimizer_kwargs["learning_rate"] = learning_rate
 
         return self.optimizer_class(**self.optimizer_kwargs)
