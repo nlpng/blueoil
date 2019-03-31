@@ -747,9 +747,13 @@ class View(object):
             inputs_string = self.inputs_to_string(input_ops)
             shape_string = self.shape_to_string(op.shape)
 
+            ih = input_ops['A'].height
+            iw = input_ops['A'].width
+            ic = input_ops['A'].channel
+
             return self.format_string(
                 f"""
-                func_Mean({inputs_string}, {op.name}, {shape_string});
+                func_Mean({inputs_string}, {op.name}, {ih}, {iw}, {ic}, {shape_string});
                 """
             )
         elif self.op.op_type == 'Sigmoid':
