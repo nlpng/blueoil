@@ -353,10 +353,10 @@ class View(object):
                 """
             )
 
-        elif self.op.op_type == 'Mean':
-            if len(input_ops) != 2:
-                self.raise_invalid_args_exception(op, input_ops, output_ops)
-            return self.render_alias(op, input_ops, output_ops)
+        # elif self.op.op_type == 'Mean':
+        #     if len(input_ops) != 2:
+        #         self.raise_invalid_args_exception(op, input_ops, output_ops)
+        #     return self.render_alias(op, input_ops, output_ops)
 
         elif self.op.op_type == 'StopGradient':
             if len(input_ops) != 1:
@@ -740,6 +740,42 @@ class View(object):
                 func_Matmul({inputs_string}, {op.name}, {ia_size}, {shape_string});
                 """
             )
+        elif self.op.op_type == 'Mean':
+            if len(input_ops) != 2:
+                self.raise_invalid_args_exception(op, input_ops, output_ops)
+
+            inputs_string = self.inputs_to_string(input_ops)
+            shape_string = self.shape_to_string(op.shape)
+
+            return self.format_string(
+                f"""
+                func_Mean({inputs_string}, {op.name}, {shape_string});
+                """
+            )
+        elif self.op.op_type == 'Sigmoid':
+            if len(input_ops) != 1:
+                self.raise_invalid_args_exception(op, input_ops, output_ops)
+
+            inputs_string = self.inputs_to_string(input_ops)
+            shape_string = self.shape_to_string(op.shape)
+
+            return self.format_string(
+                f"""
+                func_Sigmoid({inputs_string}, {op.name}, {shape_string});
+                """
+            )
+        elif self.op.op_type == 'ResizeBilinear':
+            if len(input_ops) != 2:
+                self.raise_invalid_args_exception(op, input_ops, output_ops)
+
+            inputs_string = self.inputs_to_string(input_ops)
+            shape_string = self.shape_to_string(op.shape)
+
+            return self.format_string(
+                f"""
+                func_ResizeBilinear({inputs_string}, {op.name}, {shape_string});
+                """
+            )
 
     def render_alias(self, op, input_ops, output_ops):
         if len(input_ops) != 1:
@@ -774,7 +810,7 @@ class View(object):
         error_message = self.format_string(
             f"""
             InvalidArgsEeception: name: {op.name}, op: {op.op_type},
-            This op was taken {len(input_ops)} inputs and {len(input_ops)} outputs ops!!!
+            This op was taken {len(input_ops)} inputs and {len(output_ops)} outputs ops!!!
             """
         )
 
