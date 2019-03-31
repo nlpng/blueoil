@@ -2765,3 +2765,155 @@ class MatMul(Operator):
     @property
     def preserve_quantization(self) -> bool:
         return False
+
+
+class Mean(Operator):
+    """Reduce mean operator.
+    Computes the mean of elements across dimensions of a tensor.
+    Input
+    -----
+    A
+        2-dimensional matrix A
+    B
+        2-dimensional matrix B
+    Output
+    ------
+    C
+        Matrix multiply results from A * B
+    """
+
+    _input_names = ['A', 'B']
+    _output_names = ['C']
+
+    def __init__(self,
+                 name: str,
+                 shape: List[int],
+                 dtype: DataType,
+                 input_ops: Ops,
+                 dimension_format: str = 'NHWC',
+                 keepdims: bool = True) -> None:
+        """Init the Mean operator."""
+        super().__init__(name, shape, dtype, input_ops, dimension_format=dimension_format)
+        self._keepdims = keepdims
+
+    def _check_consistency(self) -> None:
+        super()._check_consistency()
+
+    @property
+    def _dispatch_name(self) -> str:
+        return type(self).__name__
+
+    @property
+    def is_monotonic(self) -> bool:
+        return False
+
+    def run_forward(self) -> np.ndarray:
+        a_data = self.input_ops['A'].data
+        b_data = self.input_ops['B'].data
+        self._data = np.mean(a_data, axis=tuple(b_data), keepdims=self._keepdims)
+        return self._data
+
+    @property
+    def preserve_quantization(self) -> bool:
+        return False
+
+
+class Sigmoid(Operator):
+    """Sigmoid class.
+
+    Sigmoid takes one input data (Tensor) and produces one output data (Tensor)
+    where computes sigmoid element-wise. Specifically, y = 1 / (1 + exp(-x)).
+
+    Inputs
+    ------
+    X
+        Input tensor
+
+    Outputs
+    -------
+    Y
+        Output tensor
+
+    """
+
+    _input_names = ['X']
+    _output_names = ['Y']
+
+    def __init__(self,
+                 name: str,
+                 shape: List[int],
+                 dtype: DataType,
+                 input_ops: Ops,
+                 dimension_format: str = 'NHWC') -> None:
+        """Init the Sigmoid operator."""
+        super().__init__(name, shape, dtype, input_ops, dimension_format=dimension_format)
+
+    def _check_consistency(self) -> None:
+        super()._check_consistency()
+        self._assert(self.input_ops['X'].shape == self.shape)
+
+    @property
+    def is_monotonic(self) -> bool:
+        return False
+
+    @classmethod
+    def infer_shape(cls, lists: Dict[str, List[int]], format: str, input_formats: List[str],
+                    attrs: Dict[str, Any]) -> List[int]:
+        return lists['X']
+
+    def run_forward(self) -> np.ndarray:
+        in_data = self.input_ops['X'].data
+        self._data = 1 / (1 + np.exp(-in_data))
+        return self._data
+
+    @property
+    def preserve_quantization(self) -> bool:
+        return False
+
+
+class ResizeBilinear(Operator):
+    """ResizeBilinear class.
+
+    ResizeBilinear resize images to size using bilinear interpolation.
+
+    Inputs
+    ------
+    X
+        Input tensor
+
+    Outputs
+    -------
+    Y
+        Output tensor
+
+    """
+
+    _input_names = ['A', 'B']
+    _output_names = ['C']
+
+    def __init__(self,
+                 name: str,
+                 shape: List[int],
+                 dtype: DataType,
+                 input_ops: Ops,
+                 dimension_format: str = 'NHWC',
+                 align_corners: bool = True) -> None:
+        """Init the ResizeBilinear operator."""
+        super().__init__(name, shape, dtype, input_ops, dimension_format=dimension_format)
+        self._align_corners = align_corners
+
+    def _check_consistency(self) -> None:
+        super()._check_consistency()
+
+    @property
+    def is_monotonic(self) -> bool:
+        return False
+
+    @classmethod
+    def infer_shape(cls, lists: Dict[str, List[int]], format: str, input_formats: List[str],
+                    attrs: Dict[str, Any]) -> List[int]:
+        return lists['A']
+
+    @property
+    def preserve_quantization(self) -> bool:
+        return False
