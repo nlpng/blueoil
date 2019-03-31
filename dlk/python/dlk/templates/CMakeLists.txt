@@ -42,6 +42,7 @@ list(APPEND SRC_LIB_ALL
     src/func/pad.cpp
     src/func/mul.cpp
     src/func/matmul.cpp
+    src/func/mean.cpp
     src/func/quantize.cpp
     src/func/quantized_conv2d.cpp
     src/func/real_div.cpp
