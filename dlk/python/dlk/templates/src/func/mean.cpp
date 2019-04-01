@@ -28,13 +28,9 @@ void func_Mean(T_FLOAT input[], int32_t indices[], T_FLOAT output[], T_UINT in_h
 
   for (T_UINT kz = 0; kz < in_size; kz++){
     for (T_UINT kd = 0; kd < out_depth; kd++){
-      output[kd] += input[index];
+      output[kd] += input[index] / in_size;
       index++;
     }
-  }
-
-  for (T_UINT d = 0; d < out_depth; d++){
-    output[d] /= (in_height * in_width);
   }
 
   Measurement::Stop();
