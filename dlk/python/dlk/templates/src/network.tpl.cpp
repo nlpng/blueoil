@@ -37,6 +37,7 @@ limitations under the License.
 #include "func/mean.h"
 #include "func/quantize.h"
 #include "func/quantized_conv2d.h"
+#include "func/resize_bilinear.h"
 #include "func/real_div.h"
 #include "func/relu.h"
 #include "func/sigmoid.h"
