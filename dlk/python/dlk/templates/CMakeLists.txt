@@ -47,6 +47,7 @@ list(APPEND SRC_LIB_ALL
     src/func/quantized_conv2d.cpp
     src/func/real_div.cpp
     src/func/relu.cpp
+    src/func/sigmoid.cpp
     src/func/leaky_relu.cpp
     src/func/round.cpp
     src/func/scale.cpp
