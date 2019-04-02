@@ -152,14 +152,14 @@ class BiSeNet(Base):
 
         arm_1 = self._attention_refinement('arm_1', down_x32, 128, is_training)
         arm_1 += global_context
-        global_context = tf.image.resize_bilinear(arm_1, size=[22, 30], align_corners=True)
+        global_context = tf.depth_to_space(arm_1, block_size=2)
         global_context = self._conv_block('context_arm_1', global_context, 128, 3, 1, is_training, batchnorm=False)
 
         self.aux0 = self._bisenet_head('aux0', global_context, self.num_classes, is_training, 16, is_aux=True)
 
         arm_2 = self._attention_refinement('arm_2', down_x16, 128, is_training)
         arm_2 += global_context
-        global_context = tf.image.resize_bilinear(arm_2, size=[44, 60], align_corners=True)
+        global_context = tf.depth_to_space(arm_2, block_size=2)
         global_context = self._conv_block('context_arm_2', global_context, 128, 3, 1, is_training, batchnorm=False)
 
         self.aux1 = self._bisenet_head('aux1', global_context, self.num_classes, is_training, 8, is_aux=True)
