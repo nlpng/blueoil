@@ -18,13 +18,23 @@ limitations under the License.
 #include "time_measurement.h"
 
 void func_ResizeBilinear(T_FLOAT input1, int32_t input2[], T_FLOAT output[],
+                         T_UINT in_height, T_UINT in_width, T_UINT in_depth,
                          T_UINT out_height, T_UINT out_width, T_UINT out_depth) {
   Measurement::Start("ResizeBilinear");
 
-  T_UINT elements = out_height * out_width * out_depth;
+  std::memset(output, 0.0f, out_depth * out_height * out_width * sizeof(T_FLOAT));
 
-  for (T_UINT i = 0; i < elements; i++)
-    output[i] = (input1 > input2[i] ? input1 : input2[i]);
+  T_FLOAT rowScale = in_height / out_height;
+  T_FLOAT colScale = in_width / in_width;
+
+  for (T_UINT kr = 0; kr < out_height; kr++){
+    for (T_UINT kc = 0; kc < out_width; kc++){
+      orir = kr * rowScale;
+      oric = kc * colScale;
+
+      output[i] = input1[kw];
+    }
+  }
 
   Measurement::Stop();
 }
