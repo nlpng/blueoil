@@ -19,7 +19,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
 from lmnet.networks.segmentation.base import Base
-from lmnet.networks.segmentation.tp_qdensenet import densenet_backbone, weight_quantizer, activation_quantizer
+from lmnet.networks.segmentation.qdensenet import densenet_backbone, weight_quantizer, activation_quantizer
 
 from tensorpack.models import *
 from tensorpack.tfutils import varmanip, argscope, get_model_loader, tower, SaverRestore
