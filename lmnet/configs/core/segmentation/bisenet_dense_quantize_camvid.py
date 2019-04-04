@@ -37,10 +37,6 @@ from lmnet.data_augmentor import (
     RandomResize,
     CropOrPad,
 )
-from lmnet.quantizations import (
-    binary_mean_scaling_quantizer,
-    linear_mid_tread_half_quantizer,
-)
 
 IS_DEBUG = False
 
@@ -55,10 +51,10 @@ DATA_FORMAT = "NHWC"
 TASK = Tasks.SEMANTIC_SEGMENTATION
 CLASSES = DATASET_CLASS.classes
 
-MAX_STEPS = 100000
+MAX_STEPS = 150000
 SAVE_STEPS = 10000
-TEST_STEPS = 1000
-SUMMARISE_STEPS = 1000
+TEST_STEPS = 5000
+SUMMARISE_STEPS = 5000
 
 # distributed training
 IS_DISTRIBUTION = False
