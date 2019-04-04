@@ -100,9 +100,8 @@ class BiSeNet(Base):
         # Global average pooling
         net = tf.reduce_mean(x, [1, 2], keep_dims=True)
 
-        net = self._conv2d(net, out_ch, 1, 1)
-        # net = self._batch_norm(net, is_training)
-        net = tf.sigmoid(net)
+        net = self._fc(name + '_fc', net, out_ch, tf.sigmoid)
+        net = tf.reshape(net, [net.get_shape()[0].value, 1, 1, net.get_shape()[1].value])
 
         output = tf.multiply(x, net)
 
@@ -117,10 +116,9 @@ class BiSeNet(Base):
         # Global average pooling
         net = tf.reduce_mean(inputs, [1, 2], keep_dims=True)
 
-        net = self._conv2d(net, out_ch, 1, 1)
-        net = tf.nn.relu(net)
-        net = self._conv2d(net, out_ch, 1, 1)
-        net = tf.sigmoid(net)
+        net = self._fc(name + '_fc1', net, out_ch, tf.nn.relu)
+        net = self._fc(name + '_fc2', net, out_ch, tf.sigmoid)
+        net = tf.reshape(net, [net.get_shape()[0].value, 1, 1, net.get_shape()[1].value])
 
         net = tf.multiply(inputs, net)
 
