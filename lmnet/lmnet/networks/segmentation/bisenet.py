@@ -147,12 +147,11 @@ class BiSeNet(Base):
         # context path
         logits, down_x32, down_x16 = resnet_backbone(images, 64, 'NHWC', self.a_quantizer, self.w_quantizer)
 
-        global_context = self._conv_block('context_logits', logits, 128, 1, 1, is_training, batchnorm=False)
-        global_context = tf.image.resize_bilinear(global_context, size=[11, 15], align_corners=True)
+        global_context = down_x32
 
         arm_1 = self._attention_refinement('arm_1', down_x32, 128, is_training)
-        arm_1 += global_context
-        global_context = tf.depth_to_space(arm_1, block_size=2)
+        arm_1_concat = tf.concat([global_context, arm_1], axis=-1)
+        global_context = tf.depth_to_space(arm_1_concat, block_size=2)
         global_context = self._conv_block('context_arm_1', global_context, 128, 3, 1, is_training, batchnorm=False)
 
         self.aux0 = self._bisenet_head('aux0', global_context, self.num_classes, is_training, 16, is_aux=True)
