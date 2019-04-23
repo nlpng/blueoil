@@ -368,6 +368,8 @@ def pass_compute_thresholds(graph: Graph) -> None:
                     bn_nega_idx = [v for v in range(len(bn_scale)) if bn_scale[v] < 0]
             threshold = (trans_th['data'] * np.float64(n)) / (np.float64(max_v) * scaling_factor)
 
+            # TODO: check the trend here before rounding up number
+
             # take care of threshold values that are larger than 13-bit signed integer
             threshold[threshold > max_th_value] = max_th_value
             threshold[threshold < -max_th_value] = -max_th_value
