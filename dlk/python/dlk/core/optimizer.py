@@ -369,18 +369,18 @@ def pass_compute_thresholds(graph: Graph) -> None:
             threshold = (trans_th['data'] * np.float64(n)) / (np.float64(max_v) * scaling_factor)
 
             for ch_id, th_per_ch in enumerate(threshold):
-                if quantizer_conv_weights.op_type == 'QTZ_binary_channel_wise_mean_scaling':
-                    threshold_table[ch_id, th_id] = int(math.floor(th_per_ch)) \
-                        if (scaling_factor[ch_id] < 0) ^ (ch_id in bn_nega_idx) \
-                        else int(math.ceil(th_per_ch))
-                else:
-                    threshold_table[ch_id, th_id] = int(math.floor(th_per_ch)) \
-                        if (scaling_factor < 0) ^ (ch_id in bn_nega_idx) \
-                        else int(math.ceil(th_per_ch))
+                negative_scaling_factor = scaling_factor[ch_id] < 0 \
+                    if quantizer_conv_weights.op_type == 'QTZ_binary_channel_wise_mean_scaling' \
+                    else scaling_factor < 0
+                threshold_table[ch_id, th_id] = int(math.floor(th_per_ch)) \
+                    if negative_scaling_factor ^ (ch_id in bn_nega_idx) else int(math.ceil(th_per_ch))
 
         for c in range(ch):
-            threshold_table[c, -1] = 1 \
-                if np.all(threshold_table[c, 1:-1] > threshold_table[c, :-2], axis=0) else -1
+            if np.all(threshold_table[c, 1:-1] > threshold_table[c, :-2], axis=0):
+                threshold_table[c, -1] = 1
+            else:
+                threshold_table[c, -1] = -1
+
             # Applying the magic number
             if np.all(threshold_table[c, 1:-1] == threshold_table[c, :-2], axis=0):
                 threshold_table[c, -1] = 2
