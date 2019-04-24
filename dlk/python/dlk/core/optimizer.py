@@ -380,14 +380,15 @@ def pass_compute_thresholds(graph: Graph) -> None:
                 threshold_table[c, -1] = 1
             else:
                 threshold_table[c, -1] = -1
+                threshold_table[c, 0:3].sort()
+
+            # take care of threshold values that are larger than 13-bit signed integer
+            threshold_table[c, threshold_table[c, :] > max_th_value] = max_th_value
+            threshold_table[c, threshold_table[c, :] < -max_th_value] = -max_th_value
 
             # Applying the magic number
             if np.all(threshold_table[c, 1:-1] == threshold_table[c, :-2], axis=0):
                 threshold_table[c, -1] = 2
-
-        # take care of threshold values that are larger than 13-bit signed integer
-        threshold_table[threshold_table > max_th_value] = max_th_value
-        threshold_table[threshold_table < -max_th_value] = -max_th_value
 
         # Put the thresholds into list
         conv_node.thresholds = threshold_table.astype(np.int32).flatten().tolist()
