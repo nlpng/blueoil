@@ -351,7 +351,7 @@ def pass_compute_thresholds(graph: Graph) -> None:
         max_th_value = 2 ** 12 - 1
 
         # The threshold_table is numpy array that holds the threshold values for all channels
-        threshold_table = np.empty([ch, n + 1], dtype=np.int32)
+        threshold_table = np.empty([ch, n + 1])
 
         # Compute threshold (t0, t1, t2)
         th_val = [0.5 + i for i in range(n)]
@@ -367,12 +367,6 @@ def pass_compute_thresholds(graph: Graph) -> None:
                     bn_scale = op.input_ops['scale'].data
                     bn_nega_idx = [v for v in range(len(bn_scale)) if bn_scale[v] < 0]
             threshold = (trans_th['data'] * np.float64(n)) / (np.float64(max_v) * scaling_factor)
-
-            # TODO: check the trend here before rounding up number
-
-            # take care of threshold values that are larger than 13-bit signed integer
-            threshold[threshold > max_th_value] = max_th_value
-            threshold[threshold < -max_th_value] = -max_th_value
 
             for ch_id, th_per_ch in enumerate(threshold):
                 if quantizer_conv_weights.op_type == 'QTZ_binary_channel_wise_mean_scaling':
@@ -391,8 +385,12 @@ def pass_compute_thresholds(graph: Graph) -> None:
             if np.all(threshold_table[c, 1:-1] == threshold_table[c, :-2], axis=0):
                 threshold_table[c, -1] = 2
 
+        # take care of threshold values that are larger than 13-bit signed integer
+        threshold_table[threshold_table > max_th_value] = max_th_value
+        threshold_table[threshold_table < -max_th_value] = -max_th_value
+
         # Put the thresholds into list
-        conv_node.thresholds = threshold_table.flatten().tolist()
+        conv_node.thresholds = threshold_table.astype(np.int32).flatten().tolist()
 
         # get nodes to be removed after being disconnected
         get_nodes_in_branch(activation_quantizer_node, conv_node, to_be_removed)
