@@ -96,3 +96,41 @@ def get_nodes_in_branch(starting_node, stop_node, node_list):
 
     for node in starting_node.input_nodes:
         get_nodes_in_branch(node, stop_node, node_list)
+
+
+def single_input_single_output_node_terminator(graph, node):
+    # node is the node needed to be deleted.
+    inputs = node.input_ops
+    outputs = node.output_ops
+    assert(len(inputs.keys()) == 1 and len(outputs.keys()) == 1)
+
+    # Connect the input of 'node' to the output of 'node'
+    # This should have single output name for the 'node'
+    changed_output_node = []
+    for output_name, output_node_list in outputs.items():
+        for output_node in output_node_list:
+            # the name that is connected with the 'node'
+            matched_consumer_name = None
+            for consumer_name, consumer in output_node.input_ops.items():
+                if consumer == node:
+                    matched_consumer_name = consumer_name
+                    break
+            if matched_consumer_name is not None:
+                changed_output_node.append(output_node)
+                output_node.remove_input(matched_consumer_name)
+                for input_node in node.input_nodes:
+                    output_node.add_input(matched_consumer_name, input_node)
+
+    # if changing the output nodes connections,
+    # also need to change the input node connections accordingly
+    if changed_output_node:
+        for input_node in node.input_nodes:
+            for input_output_name, input_output in input_node.output_ops.items():
+                if node in input_output:
+                    for n in input_output:
+                        if n != node:
+                            changed_output_node.append(n)
+                    input_node.remove_output(input_output_name)
+                    input_node.add_outputs({input_output_name: changed_output_node})
+
+    graph.remove_op(node)

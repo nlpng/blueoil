@@ -33,7 +33,7 @@ from core.optimizer import pass_remove_identities, pass_transpose, pass_constant
     pass_propagate_quantization_details_into_conv, pass_compute_thresholds, pass_pack_weights, \
     pass_quantize_convolutions, pass_propagate_datatypes, \
     pass_propagate_format, pass_propagate_output_type_backward, \
-    pass_lookup
+    pass_lookup, pass_remove_space_to_depth
 
 SCRITPS_DIR = path.abspath(path.dirname(__file__))
 DLK_ROOT_DIR = path.abspath(path.join(SCRITPS_DIR, '..'))
@@ -55,6 +55,7 @@ def optimize_graph_step(model: Model, config: Config) -> None:
     graph: Graph = model.graph
     pass_remove_identities(graph)
     pass_transpose(graph)
+    pass_remove_space_to_depth(graph)
 
     if config.activate_hard_quantization:
         pass_lookup(graph)

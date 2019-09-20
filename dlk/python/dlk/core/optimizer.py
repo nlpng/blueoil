@@ -19,12 +19,18 @@ import warnings
 import numpy as np
 
 from core.graph import Graph
-from core.graph_pattern_matching import get_nodes_in_branch, sort_graph
+from core.graph_pattern_matching import get_nodes_in_branch, sort_graph, single_input_single_output_node_terminator
 from core.operators import Constant, Operator, Conv, Lookup
 from core.data_types import Uint32, Int32, QUANTIZED_NOT_PACKED, QUANTIZED_PACKED, PackedUint32, QUANTIZED_PACKED_KERNEL
 from typing import cast, List, Any
 from collections import defaultdict
 from modules.packer import Packer
+
+
+def pass_remove_space_to_depth(graph: Graph) -> None:
+    exec_list = [n for n in sort_graph(graph) if n.op_type == 'SpaceToDepth']
+    for m in exec_list:
+        single_input_single_output_node_terminator(graph, m)
 
 
 def pass_remove_identities(graph: Graph) -> None:
