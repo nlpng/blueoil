@@ -34,6 +34,8 @@ if TYPE_CHECKING:
 Ops = Dict[str, 'Operator']
 OutOps = Dict[str, List['Operator']]
 
+color_warning_sign = colored('WRN', 'red', attrs=['blink'])
+
 
 class Operator(object):
     """Base class of operators."""
@@ -811,10 +813,11 @@ class SpaceToDepth(Operator):
         """
         super()._check_consistency()
         if self.channel % 32 != 0:
-            warnings.warn(f"{self.name} op of {self.op_type}")
-            warnings.warn(f"Output channels need to be multiple of")
-            warnings.warn(f" 1. kernel_size^2 * 32")
-            warnings.warn(f" 2. kernel_size^2 * 8, 16")
+            warnings.warn(f"Output channels need to be multiple of "
+                          f"1. kernel_size^2 * 32 "
+                          f"2. kernel_size^2 * 8, 16 for {self.name} of {self.op_type}, "
+                          f"but channel size of {self.channel}",
+                          stacklevel=2)
 
     @property
     def is_monotonic(self) -> bool:
@@ -1017,11 +1020,11 @@ class Conv(Operator):
         kernel size must be 1x1 or 3x3
         """
         super()._check_consistency()
-        if self.kernel_shape[0] not in (1, 3):
-            color_warning_sign = colored('WRN', 'red', attrs=['blink'])
+        if self.kernel_shape[0] in (1, 3):
             warnings.warn(color_warning_sign +
                           f" kernel size must be 1x1 or 3x3 but got "
-                          f"{self.kernel_shape[0]}x{self.kernel_shape[1]} for {self.name} of {self.op_type} op")
+                          f"{self.kernel_shape[0]}x{self.kernel_shape[1]} for {self.name} of {self.op_type}",
+                          stacklevel=2)
 
         self._assert(len(self.shape) == self._num_dimensions + 2,
                      f'{self.name} has illegal shape {self.shape}')
@@ -2567,9 +2570,9 @@ class DepthToSpace(Operator):
         """
         if self.input_ops['input'].op_type == 'QTZ_linear_mid_tread_half' and \
                 self.input_ops['input'].channel % 128 != 0:
-            warnings.warn(f"{self.name} op of {self.op_type}")
-            warnings.warn(f"Input channels need to be multiple of")
-            warnings.warn(f" 1. kernel_size^2 * 32")
+            warnings.warn(
+                color_warning_sign + f"Input channels need to be multiple of kernel_size^2 * 32 for "
+                f"{self.name} of {self.op_type}, but got {self.input_ops['input'].channel}", stacklevel=2)
 
     @property
     def is_monotonic(self) -> bool:
