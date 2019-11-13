@@ -1020,7 +1020,7 @@ class Conv(Operator):
         kernel size must be 1x1 or 3x3
         """
         super()._check_consistency()
-        if self.kernel_shape[0] in (1, 3):
+        if self.kernel_shape[0] not in (1, 3):
             warnings.warn(color_warning_sign +
                           f" kernel size must be 1x1 or 3x3 but got "
                           f"{self.kernel_shape[0]}x{self.kernel_shape[1]} for {self.name} of {self.op_type}",
