@@ -20,6 +20,7 @@ import click
 import tensorflow as tf
 from tensorflow.core.util.event_pb2 import SessionLog
 from tensorflow.keras.utils import Progbar
+from tensorflow.python.tools import freeze_graph
 
 from lmnet import environment
 from lmnet.common import Tasks
@@ -30,6 +31,8 @@ from lmnet.utils import config as config_util
 from lmnet.utils import executor
 from lmnet.utils import horovod as horovod_util
 from lmnet.utils import module_loader
+
+from frontend import TensorFlowIO
 
 
 def _save_checkpoint(saver, sess, global_step, step):
@@ -87,6 +90,34 @@ def start_training(config):
     validation_dataset = setup_dataset(config, "validation", rank)
     print("validation dataset num:", validation_dataset.num_per_epoch)
 
+    infer_graph = tf.Graph()
+    with infer_graph.as_default():
+        model = ModelClass(
+            classes=config.CLASSES,
+            is_debug=config.IS_DEBUG,
+            **network_kwargs,
+        )
+
+        is_training = tf.constant(False, name="is_training")
+
+        images_placeholder, _ = model.placeholders()
+        model.inference(images_placeholder, is_training)
+        init_op = tf.global_variables_initializer()
+
+        session_config = tf.ConfigProto()
+        infer_sess = tf.Session(graph=infer_graph, config=session_config)
+        infer_sess.run(init_op)
+
+        minimal_graph = tf.graph_util.convert_variables_to_constants(
+            infer_sess,
+            infer_sess.graph.as_graph_def(add_shapes=True),
+            ["output"],
+        )
+        tf.io.write_graph(minimal_graph, '/storage/neil', 'test.pb', as_text=False)
+
+    io = TensorFlowIO()
+    model = io.read('/storage/neil/test.pb')
+
     graph = tf.Graph()
     with graph.as_default():
         if config.TASK == Tasks.OBJECT_DETECTION:
@@ -109,6 +140,7 @@ def start_training(config):
         images_placeholder, labels_placeholder = model.placeholders()
 
         output = model.inference(images_placeholder, is_training_placeholder)
+
         if config.TASK == Tasks.OBJECT_DETECTION:
             loss = model.loss(output, labels_placeholder, global_step)
         else:
