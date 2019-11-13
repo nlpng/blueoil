@@ -804,6 +804,8 @@ class SpaceToDepth(Operator):
 
     def _check_consistency(self) -> None:
         super()._check_consistency()
+        if self.channel % 128 == 0:
+            raise NotImplementedError(f"---the test message for pre-checker")
 
     @property
     def is_monotonic(self) -> bool:
