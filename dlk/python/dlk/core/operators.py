@@ -14,8 +14,11 @@
 # limitations under the License.
 # =============================================================================
 """Definition of operators."""
+import logging
 import copy
 import functools
+import warnings
+from termcolor import colored
 from abc import abstractmethod
 from itertools import dropwhile
 from typing import TYPE_CHECKING, Any, Dict, Optional, cast
@@ -803,9 +806,15 @@ class SpaceToDepth(Operator):
         super().__init__(name, shape, dtype, input_ops, dimension_format=dimension_format)
 
     def _check_consistency(self) -> None:
+        """
+        output depth must be (multiple of kernel_size^2 * 32) OR (kernel_size^2 * {8, 16}).
+        """
         super()._check_consistency()
-        if self.channel % 128 == 0:
-            raise NotImplementedError(f"---the test message for pre-checker")
+        if self.channel % 32 != 0:
+            warnings.warn(f"{self.name} op of {self.op_type}")
+            warnings.warn(f"Output channels need to be multiple of")
+            warnings.warn(f" 1. kernel_size^2 * 32")
+            warnings.warn(f" 2. kernel_size^2 * 8, 16")
 
     @property
     def is_monotonic(self) -> bool:
@@ -1004,7 +1013,16 @@ class Conv(Operator):
         # if kernel shape is not assigned, estimate kernel shape from input W's shape
 
     def _check_consistency(self) -> None:
+        """
+        kernel size must be 1x1 or 3x3
+        """
         super()._check_consistency()
+        if self.kernel_shape[0] not in (1, 3):
+            color_warning_sign = colored('WRN', 'red', attrs=['blink'])
+            warnings.warn(color_warning_sign +
+                          f" kernel size must be 1x1 or 3x3 but got "
+                          f"{self.kernel_shape[0]}x{self.kernel_shape[1]} for {self.name} of {self.op_type} op")
+
         self._assert(len(self.shape) == self._num_dimensions + 2,
                      f'{self.name} has illegal shape {self.shape}')
         self._assert(len(self.kernel_shape) == self._num_dimensions,
@@ -2544,6 +2562,14 @@ class DepthToSpace(Operator):
 
     def _check_consistency(self) -> None:
         super()._check_consistency()
+        """
+        qunatized-packed data requires depth of input must be multiple of kernel_size^2 * 32
+        """
+        if self.input_ops['input'].op_type == 'QTZ_linear_mid_tread_half' and \
+                self.input_ops['input'].channel % 128 != 0:
+            warnings.warn(f"{self.name} op of {self.op_type}")
+            warnings.warn(f"Input channels need to be multiple of")
+            warnings.warn(f" 1. kernel_size^2 * 32")
 
     @property
     def is_monotonic(self) -> bool:
