@@ -48,7 +48,6 @@ def optimize_graph_step(model: Model, config: Config) -> None:
         config (Config): Collection of configurations
 
     Returns:
-
     
     """
     graph: Graph = model.graph

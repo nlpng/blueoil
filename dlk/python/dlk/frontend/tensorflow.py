@@ -51,6 +51,8 @@ class TensorFlowIO(BaseIO):
         # import graph
         model.graph = Importer.make_graph(graph_def)
 
+        print('finish import pb file')
+
         return model
 
     def write(self, model: Model, path: str) -> None:
