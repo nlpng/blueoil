@@ -809,7 +809,10 @@ class SpaceToDepth(Operator):
 
     def _check_consistency(self) -> None:
         """
-        output depth must be (multiple of kernel_size^2 * 32) OR (kernel_size^2 * {8, 16}).
+        This check the following constraints:
+            Output depth must be
+            1. (multiple of kernel_size^2 * 32) OR
+            2. (kernel_size^2 * {8, 16}).
         """
         super()._check_consistency()
         if self.channel % 32 != 0:
@@ -1017,13 +1020,27 @@ class Conv(Operator):
 
     def _check_consistency(self) -> None:
         """
-        kernel size must be 1x1 or 3x3
+        This check the following condition:
+            1. Kernel size must be 1x1 or 3x3.
+            2. Max channel size allowed is 1024.
+            3. Input channel size is multiple of 32.
         """
         super()._check_consistency()
         if self.kernel_shape[0] not in (1, 3):
             warnings.warn(color_warning_sign +
-                          f" kernel size must be 1x1 or 3x3 but got "
+                          f" Kernel size must be 1x1 or 3x3 but got "
                           f"{self.kernel_shape[0]}x{self.kernel_shape[1]} for {self.name} of {self.op_type}",
+                          stacklevel=2)
+        if self.input_ops['X'].channel > 1024 or self.channel > 1024:
+            warnings.warn(color_warning_sign +
+                          f" Input or output channel size need be less than 1024, but got "
+                          f"input: {self.input_ops['X'].channel} and output: {self.channel} "
+                          f"for {self.name} of {self.op_type}",
+                          stacklevel=2)
+        if self.input_ops['X'].channel % 32 != 0:
+            warnings.warn(color_warning_sign +
+                          f" Input channel size need be multiple of 32, but got "
+                          f"{self.input_ops['X'].channel} for {self.name} of {self.op_type}",
                           stacklevel=2)
 
         self._assert(len(self.shape) == self._num_dimensions + 2,
@@ -2566,7 +2583,8 @@ class DepthToSpace(Operator):
     def _check_consistency(self) -> None:
         super()._check_consistency()
         """
-        qunatized-packed data requires depth of input must be multiple of kernel_size^2 * 32
+        This check the following constraints:
+            1. qunatized-packed data requires depth of input must be multiple of kernel_size^2 * 32
         """
         if self.input_ops['input'].op_type == 'QTZ_linear_mid_tread_half' and \
                 self.input_ops['input'].channel % 128 != 0:
