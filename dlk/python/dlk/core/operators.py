@@ -1537,9 +1537,15 @@ class Add(Operator):
         self._data = a + b
         return self._data
 
+    def de_run(self, **kwargs) -> Dict:
+        bias = np.float64(self._input_ops['B'].data)
+
+        kwargs['data'] = kwargs['data'] - bias
+        return kwargs
+
     @property
     def is_monotonic(self) -> bool:
-        return False
+        return True
 
     @classmethod
     def infer_shape(cls, lists: Dict[str, List[int]], format: str, input_formats: List[str],
